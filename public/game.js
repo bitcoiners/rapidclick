@@ -13,6 +13,43 @@ let target = {
 let gameInterval = null;
 let timerInterval = null;
 
+// Sound effects using Web Audio API
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+// Function to create and play a beep sound
+function playSound(frequency, duration, type = 'sine') {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = type;
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+}
+
+// Sound effect functions
+function playHitSound() {
+    playSound(800, 0.1, 'sine');
+    setTimeout(() => playSound(1000, 0.1, 'sine'), 50);
+}
+
+function playMissSound() {
+    playSound(200, 0.15, 'sawtooth');
+}
+
+function playGameOverSound() {
+    playSound(400, 0.2, 'sine');
+    setTimeout(() => playSound(350, 0.2, 'sine'), 200);
+    setTimeout(() => playSound(300, 0.4, 'sine'), 400);
+}
+
 // Initialize game on page load
 function initGame() {
     canvas = document.getElementById('gameCanvas');
@@ -138,10 +175,12 @@ function handleCanvasClick(event) {
     if (distance <= target.radius) {
         score++;
         document.getElementById('score').textContent = score;
+        playHitSound();
         spawnTarget();
+    } else {
+        playMissSound();
     }
 }
-
 
 // Update timer
 function updateTimer() {
@@ -166,6 +205,8 @@ function endGame() {
     
     document.getElementById('finalScore').textContent = score;
     document.getElementById('gameOverScreen').style.display = 'block';
+    
+    playGameOverSound();
     
     submitScore(score);
 }
