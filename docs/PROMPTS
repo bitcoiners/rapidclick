@@ -121,3 +121,16 @@ You are a JavaScript developer. Create the complete, runnable JavaScript code fo
 - Assume the HTML elements exist as per the blueprint (ids: `gameCanvas`, `score`, `timer`, `highscore`, `startBtn`, etc.).
 - The code must be ready to copy, paste, and run.
 - Do not include explanations outside the code block.
+
+
+
+## Frontend Enhancements
+## AI Prompt for Sound
+Add sound effects to my existing game.js file of this project. Include a 'click' sound when the target is hit, a 'miss' sound for a wrong click, and a 'game over' sound. Use the Web Audio API or simple HTML5 <audio> tags. Output the complete updated game.js code.
+
+
+## AI Prompt for Difficulty: 
+Add a difficulty selector to my index.html with options 'Easy', 'Medium', 'Hard'. Modify game.js to change the target's radius and the game's timeLeft based on the selected difficulty. Provide the updated HTML and JavaScript.
+
+## Simple Leaderboard
+Modify my game.js to save the top 5 scores in the browser's localStorage and display them on a leaderboard in index.html.

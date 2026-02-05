@@ -13,6 +13,24 @@ let target = {
 let gameInterval = null;
 let timerInterval = null;
 
+// Difficulty settings
+const difficultySettings = {
+    easy: {
+        radius: 40,
+        time: 45
+    },
+    medium: {
+        radius: 30,
+        time: 30
+    },
+    hard: {
+        radius: 20,
+        time: 20
+    }
+};
+
+let currentDifficulty = 'medium';
+
 // Sound effects using Web Audio API
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -60,6 +78,20 @@ function initGame() {
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('restartBtn').addEventListener('click', restartGame);
     canvas.addEventListener('click', handleCanvasClick);
+    
+    // Add difficulty selector event listener
+    document.getElementById('difficulty').addEventListener('change', handleDifficultyChange);
+}
+
+// Handle difficulty change
+function handleDifficultyChange(event) {
+    currentDifficulty = event.target.value;
+    const settings = difficultySettings[currentDifficulty];
+    
+    // Update timer display to show the new time limit
+    if (!gameActive) {
+        document.getElementById('timer').textContent = settings.time;
+    }
 }
 
 // Fetch high score from backend
@@ -103,8 +135,12 @@ function submitScore(finalScore) {
 
 // Start the game
 function startGame() {
+    // Get difficulty settings
+    const settings = difficultySettings[currentDifficulty];
+    
     score = 0;
-    timeLeft = 30;
+    timeLeft = settings.time;
+    target.radius = settings.radius;
     gameActive = true;
     
     document.getElementById('score').textContent = score;
@@ -112,6 +148,9 @@ function startGame() {
     
     document.getElementById('startBtn').style.display = 'none';
     document.getElementById('gameOverScreen').style.display = 'none';
+    
+    // Disable difficulty selector during game
+    document.getElementById('difficulty').disabled = true;
     
     canvas.classList.add('active');
     
@@ -202,6 +241,9 @@ function endGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     canvas.classList.remove('active');
+    
+    // Re-enable difficulty selector
+    document.getElementById('difficulty').disabled = false;
     
     document.getElementById('finalScore').textContent = score;
     document.getElementById('gameOverScreen').style.display = 'block';
