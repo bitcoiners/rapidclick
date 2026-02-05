@@ -68,12 +68,75 @@ function playGameOverSound() {
     setTimeout(() => playSound(300, 0.4, 'sine'), 400);
 }
 
+// LocalStorage Leaderboard Functions
+function getLocalLeaderboard() {
+    const leaderboard = localStorage.getItem('rapidclick-leaderboard');
+    return leaderboard ? JSON.parse(leaderboard) : [];
+}
+
+function saveLocalLeaderboard(leaderboard) {
+    localStorage.setItem('rapidclick-leaderboard', JSON.stringify(leaderboard));
+}
+
+function addScoreToLeaderboard(newScore, difficulty) {
+    let leaderboard = getLocalLeaderboard();
+    
+    const scoreEntry = {
+        score: newScore,
+        difficulty: difficulty,
+        date: new Date().toISOString(),
+        timestamp: Date.now()
+    };
+    
+    leaderboard.push(scoreEntry);
+    
+    // Sort by score (descending)
+    leaderboard.sort((a, b) => b.score - a.score);
+    
+    // Keep only top 5
+    leaderboard = leaderboard.slice(0, 5);
+    
+    saveLocalLeaderboard(leaderboard);
+    
+    // Return position (1-5) if in top 5, otherwise null
+    const position = leaderboard.findIndex(entry => 
+        entry.timestamp === scoreEntry.timestamp
+    );
+    
+    return position !== -1 ? position + 1 : null;
+}
+
+function displayLeaderboard() {
+    const leaderboard = getLocalLeaderboard();
+    const leaderboardList = document.getElementById('leaderboard-list');
+    
+    if (leaderboard.length === 0) {
+        leaderboardList.innerHTML = '<li>No scores yet</li>';
+        return;
+    }
+    
+    leaderboardList.innerHTML = leaderboard.map(entry => {
+        const date = new Date(entry.date);
+        const dateStr = date.toLocaleDateString();
+        const difficultyBadge = entry.difficulty ? ` [${entry.difficulty.toUpperCase()}]` : '';
+        return `<li>${entry.score} points${difficultyBadge} - ${dateStr}</li>`;
+    }).join('');
+}
+
+function clearLeaderboard() {
+    if (confirm('Are you sure you want to clear the local leaderboard?')) {
+        localStorage.removeItem('rapidclick-leaderboard');
+        displayLeaderboard();
+    }
+}
+
 // Initialize game on page load
 function initGame() {
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
     
     fetchHighScore();
+    displayLeaderboard();
     
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('restartBtn').addEventListener('click', restartGame);
@@ -81,6 +144,9 @@ function initGame() {
     
     // Add difficulty selector event listener
     document.getElementById('difficulty').addEventListener('change', handleDifficultyChange);
+    
+    // Add clear leaderboard button listener
+    document.getElementById('clearLeaderboardBtn').addEventListener('click', clearLeaderboard);
 }
 
 // Handle difficulty change
@@ -131,6 +197,19 @@ function submitScore(finalScore) {
         .catch(error => {
             console.error('Error submitting score:', error);
         });
+    
+    // Add to local leaderboard
+    const position = addScoreToLeaderboard(finalScore, currentDifficulty);
+    displayLeaderboard();
+    
+    // Show leaderboard position if in top 5
+    const positionElement = document.getElementById('leaderboardPosition');
+    if (position) {
+        positionElement.textContent = `🏆 You ranked #${position} on the local leaderboard!`;
+        positionElement.style.display = 'block';
+    } else {
+        positionElement.style.display = 'none';
+    }
 }
 
 // Start the game
