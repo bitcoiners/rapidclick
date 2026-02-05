@@ -1,0 +1,980 @@
+# RAPIDCLICK - COMPLETE TECHNICAL BLUEPRINT
+
+## 1. PROJECT NAME & TYPE
+
+**Project Name**: RapidClick  
+**Project Type**: Full-stack Node.js web application  
+**Architecture**: Client-server model with RESTful API  
+**Purpose**: Interactive click-the-target browser game with persistent high score tracking
+
+---
+
+## 2. FOLDER & FILE STRUCTURE
+
+```
+rapidclick/
+│
+├── server.js                    # Express.js backend server
+├── package.json                 # npm dependencies and project metadata
+├── package-lock.json            # Auto-generated dependency lock file
+├── .gitignore                   # Git exclusion rules
+├── README.md                    # Project documentation (optional)
+│
+├── data/
+│   └── scores.json              # Persistent high score storage
+│
+└── public/                      # Static frontend assets served by Express
+    ├── index.html               # Main game interface (HTML structure)
+    ├── styles.css               # Game styling and layout
+    ├── game.js                  # Client-side game logic and API calls
+    └── assets/                  # Future media files directory
+        ├── sounds/              # (placeholder for sound effects)
+        └── images/              # (placeholder for image assets)
+```
+
+**Total Files to Create Initially**: 8 files + 3 directories
+
+---
+
+## 3. CORE TECHNOLOGY STACK
+
+### **Backend Stack**
+- **Runtime**: Node.js (v14.0.0 or higher)
+- **Web Framework**: Express.js v4.18.2
+- **Middleware**: 
+  - `express.json()` - Parse JSON request bodies
+  - `express.static()` - Serve static files from /public
+- **File System**: Node.js built-in `fs` module (callbacks or promises)
+- **Data Storage**: JSON file (`data/scores.json`)
+
+### **Frontend Stack**
+- **Markup**: HTML5
+- **Styling**: CSS3 (Flexbox for layout)
+- **Client-Side Logic**: Vanilla JavaScript (ES6+)
+  - No frameworks (React, Vue, etc.)
+  - No build tools (Webpack, Vite, etc.)
+- **Graphics Rendering**: HTML5 Canvas API (`<canvas>` element)
+- **HTTP Client**: Fetch API (native browser API)
+- **DOM Manipulation**: Native JavaScript (`document.getElementById`, etc.)
+
+### **Development Dependencies** (Optional)
+- **nodemon** v2.0.20 - Auto-restart server on file changes (dev only)
+
+### **No External Libraries Required For**:
+- Animation (use `requestAnimationFrame`)
+- State management (plain JavaScript variables)
+- Routing (single-page application)
+
+---
+
+## 4. BACKEND SPECIFICATION
+
+### **Purpose of `server.js`**
+
+The `server.js` file is the entry point for the Node.js backend. Its responsibilities are:
+
+1. **Initialize Express Application**: Create an Express app instance
+2. **Configure Middleware**: 
+   - Parse JSON request bodies
+   - Serve static files from the `/public` directory
+3. **Define API Routes**: 
+   - `GET /api/highscore` - Retrieve current high score
+   - `POST /api/score` - Submit new score and update high score if applicable
+4. **File System Operations**: Read and write to `data/scores.json`
+5. **Start HTTP Server**: Listen on a specified port (default: 3000)
+6. **Error Handling**: Manage file read/write errors and invalid requests
+
+---
+
+### **Exact Express.js Implementation Structure**
+
+#### **Required Dependencies**
+```json
+{
+  "express": "^4.18.2"
+}
+```
+
+#### **Module Imports**
+```javascript
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+```
+
+#### **Express App Configuration**
+1. Create Express app: `const app = express();`
+2. Define port: `const PORT = process.env.PORT || 3000;`
+3. Add middleware:
+   - `app.use(express.json());` - Parse JSON bodies
+   - `app.use(express.static('public'));` - Serve static files
+
+#### **File Path Constants**
+```javascript
+const SCORES_FILE = path.join(__dirname, 'data', 'scores.json');
+```
+
+#### **Helper Functions Needed**
+
+**`initializeScoresFile()`**
+- **Purpose**: Create `data/scores.json` if it doesn't exist
+- **Logic**:
+  1. Check if `data/` directory exists, create if not
+  2. Check if `scores.json` exists
+  3. If not, write default structure: `{ "score": 0, "date": null }`
+
+**`readScores()`**
+- **Purpose**: Read and parse `scores.json`
+- **Returns**: JavaScript object `{ score: number, date: string|null }`
+- **Logic**:
+  1. Read file using `fs.readFileSync()` or `fs.promises.readFile()`
+  2. Parse JSON string to object
+  3. Handle errors (return default if file corrupted)
+
+**`writeScores(scoreData)`**
+- **Purpose**: Write score object to `scores.json`
+- **Parameters**: `{ score: number, date: string }`
+- **Logic**:
+  1. Convert object to JSON string with formatting
+  2. Write to file using `fs.writeFileSync()` or `fs.promises.writeFile()`
+  3. Handle write errors
+
+---
+
+#### **API Endpoint: GET /api/highscore**
+
+**Route Definition**:
+```javascript
+app.get('/api/highscore', (req, res) => { ... });
+```
+
+**Purpose**: Retrieve the current high score from persistent storage
+
+**Logic Flow**:
+1. Call `readScores()` to get current high score data
+2. Return JSON response with score and date
+3. If error occurs, return 500 status with error message
+
+**Response Format**:
+```json
+{
+  "score": 42,
+  "date": "2024-02-05T14:30:00.000Z"
+}
+```
+
+**Error Response** (if file read fails):
+```json
+{
+  "error": "Failed to read high score"
+}
+```
+
+**HTTP Status Codes**:
+- 200: Success
+- 500: Server error (file read failure)
+
+---
+
+#### **API Endpoint: POST /api/score**
+
+**Route Definition**:
+```javascript
+app.post('/api/score', (req, res) => { ... });
+```
+
+**Purpose**: Accept a new score submission and update high score if it's higher than the current record
+
+**Request Body Expected**:
+```json
+{
+  "score": 25
+}
+```
+
+**Logic Flow**:
+1. Extract `score` from `req.body`
+2. Validate that `score` is a number and >= 0
+3. Call `readScores()` to get current high score
+4. Compare submitted score with current high score
+5. If new score > current high score:
+   - Create new score object: `{ score: newScore, date: new Date().toISOString() }`
+   - Call `writeScores()` to persist it
+   - Set `isNewHighScore = true`
+6. If new score <= current high score:
+   - Set `isNewHighScore = false`
+7. Return JSON response with comparison result
+
+**Response Format** (New High Score):
+```json
+{
+  "isNewHighScore": true,
+  "highScore": 25,
+  "previousHighScore": 18
+}
+```
+
+**Response Format** (Not a High Score):
+```json
+{
+  "isNewHighScore": false,
+  "highScore": 42,
+  "submittedScore": 25
+}
+```
+
+**Error Response** (Invalid input):
+```json
+{
+  "error": "Invalid score value"
+}
+```
+
+**HTTP Status Codes**:
+- 200: Success
+- 400: Bad request (invalid score)
+- 500: Server error (file write failure)
+
+---
+
+#### **Server Initialization**
+
+**Logic**:
+1. Call `initializeScoresFile()` before starting server
+2. Start server with `app.listen(PORT, callback)`
+3. Log message: `Server running on http://localhost:3000`
+
+**Complete Flow**:
+```javascript
+initializeScoresFile();
+app.listen(PORT, () => {
+  console.log(`RapidClick server running on http://localhost:${PORT}`);
+});
+```
+
+---
+
+## 5. FRONTEND SPECIFICATION
+
+### **Structure of `index.html`**
+
+#### **Required HTML Elements**
+
+**Document Structure**:
+```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    - Meta charset: UTF-8
+    - Meta viewport: responsive mobile scaling
+    - Title: "RapidClick - Click the Target Game"
+    - Link to styles.css
+  </head>
+  <body>
+    - Game container div
+    - Script tag linking to game.js (at end of body)
+  </body>
+</html>
+```
+
+#### **Body Content Structure**
+
+**Main Container**: `<div id="game-container">`
+
+**Child Elements** (in order):
+
+1. **Header Section** (`<div id="header">` or `<header>`):
+   - `<h1>RapidClick</h1>` - Game title
+   - `<p>` - Brief instructions: "Click the target as many times as you can!"
+
+2. **Stats Bar** (`<div id="stats-bar">`):
+   - `<div id="score-display">Score: <span id="score">0</span></div>`
+   - `<div id="timer-display">Time: <span id="timer">30</span>s</div>`
+   - `<div id="highscore-display">High Score: <span id="highscore">Loading...</span></div>`
+
+3. **Game Canvas**:
+   - `<canvas id="gameCanvas" width="800" height="600"></canvas>`
+   - Attributes: `width="800"` `height="600"`
+
+4. **Control Buttons**:
+   - `<button id="startBtn">Start Game</button>` - Initially visible
+   - `<button id="restartBtn" style="display:none;">Play Again</button>` - Initially hidden
+
+5. **Game Over Screen** (`<div id="gameOverScreen" style="display:none;">`):
+   - `<h2>Game Over!</h2>`
+   - `<p>Your Score: <span id="finalScore">0</span></p>`
+   - `<p id="highScoreMessage" style="display:none;">🎉 New High Score! 🎉</p>`
+   - `<p>High Score: <span id="finalHighScore">0</span></p>`
+
+**Total Element IDs to Access from JavaScript**:
+- `gameCanvas` - Canvas element
+- `score` - Current score span
+- `timer` - Timer span
+- `highscore` - High score span
+- `startBtn` - Start button
+- `restartBtn` - Restart button
+- `gameOverScreen` - Game over overlay
+- `finalScore` - Final score in game over screen
+- `highScoreMessage` - New high score message
+- `finalHighScore` - High score in game over screen
+
+---
+
+### **Structure of `styles.css`**
+
+#### **Required CSS Sections**
+
+1. **Global Styles**:
+   - Body: center content, background color, font family
+   - Reset margins and padding
+
+2. **Game Container**:
+   - Center horizontally and vertically
+   - Max width for responsiveness
+   - Background color and border
+
+3. **Header**:
+   - Title styling (font size, color)
+   - Instructions text styling
+
+4. **Stats Bar**:
+   - Flexbox layout (space between score, timer, high score)
+   - Font size and weight
+   - Margin/padding
+
+5. **Canvas**:
+   - Border styling
+   - Cursor: `crosshair` when game is active
+   - Display block (center with margin auto)
+
+6. **Buttons**:
+   - Padding, font size, background color
+   - Hover effects
+   - Cursor pointer
+   - Border radius
+
+7. **Game Over Screen**:
+   - Position: absolute overlay on top of canvas
+   - Background: semi-transparent overlay
+   - Center content (flexbox or grid)
+   - Z-index to appear above canvas
+
+8. **Responsive Design** (optional):
+   - Media query for smaller screens
+   - Scale canvas or adjust layout
+
+---
+
+### **Core Functions in `game.js`**
+
+#### **Global Variables/State**
+
+```javascript
+// Canvas and context
+let canvas;
+let ctx;
+
+// Game state
+let gameActive = false;
+let score = 0;
+let timeLeft = 30;
+let highScore = 0;
+
+// Target object
+let target = {
+  x: 0,
+  y: 0,
+  radius: 30
+};
+
+// Timers
+let gameInterval = null;
+let timerInterval = null;
+```
+
+---
+
+#### **Function 1: `initGame()`**
+
+**Purpose**: Initialize the game on page load
+
+**Logic**:
+1. Get canvas element: `canvas = document.getElementById('gameCanvas')`
+2. Get 2D context: `ctx = canvas.getContext('2d')`
+3. Call `fetchHighScore()` to load high score from server
+4. Add event listener to start button: `document.getElementById('startBtn').addEventListener('click', startGame)`
+5. Add event listener to restart button: `document.getElementById('restartBtn').addEventListener('click', restartGame)`
+6. Add event listener to canvas for clicks: `canvas.addEventListener('click', handleCanvasClick)`
+
+**When to Call**: On `window.onload` or `DOMContentLoaded`
+
+---
+
+#### **Function 2: `fetchHighScore()`**
+
+**Purpose**: Retrieve high score from backend API
+
+**Logic**:
+1. Use Fetch API: `fetch('/api/highscore')`
+2. Parse JSON response: `.then(res => res.json())`
+3. Update global variable: `highScore = data.score`
+4. Update DOM: `document.getElementById('highscore').textContent = highScore`
+5. Handle errors: `.catch()` - Display "Error" if fetch fails
+
+**Return**: Promise (async operation)
+
+**Example Flow**:
+```javascript
+fetch('/api/highscore')
+  .then(response => response.json())
+  .then(data => {
+    highScore = data.score || 0;
+    document.getElementById('highscore').textContent = highScore;
+  })
+  .catch(error => {
+    console.error('Error fetching high score:', error);
+    document.getElementById('highscore').textContent = 'Error';
+  });
+```
+
+---
+
+#### **Function 3: `startGame()`**
+
+**Purpose**: Initialize and start the game
+
+**Logic**:
+1. Reset game state:
+   - `score = 0`
+   - `timeLeft = 30`
+   - `gameActive = true`
+2. Update DOM displays:
+   - Set score to 0
+   - Set timer to 30
+3. Hide start button, show canvas (change cursor to crosshair)
+4. Hide game over screen if visible
+5. Call `spawnTarget()` to create first target
+6. Start game loop: `gameInterval = setInterval(updateGame, 16)` (~60fps)
+7. Start timer: `timerInterval = setInterval(updateTimer, 1000)` (1 second intervals)
+
+---
+
+#### **Function 4: `spawnTarget()`**
+
+**Purpose**: Generate a new target at a random position on the canvas
+
+**Logic**:
+1. Generate random x coordinate: `Math.random() * (canvas.width - target.radius * 2) + target.radius`
+2. Generate random y coordinate: `Math.random() * (canvas.height - target.radius * 2) + target.radius`
+3. Update target object: `target.x = randomX; target.y = randomY;`
+4. Ensure target is fully visible (not cut off by canvas edges)
+
+**Mathematics**:
+- Valid x range: `[radius, canvas.width - radius]`
+- Valid y range: `[radius, canvas.height - radius]`
+
+---
+
+#### **Function 5: `drawTarget()`**
+
+**Purpose**: Render the target circle on the canvas
+
+**Logic**:
+1. Clear entire canvas: `ctx.clearRect(0, 0, canvas.width, canvas.height)`
+2. Begin path: `ctx.beginPath()`
+3. Draw circle: `ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2)`
+4. Set fill color: `ctx.fillStyle = '#FF0000'` (red)
+5. Fill circle: `ctx.fill()`
+6. Optional: Add stroke (border)
+
+**Alternative Enhancement**:
+- Draw crosshair or bullseye pattern
+- Animate size or color
+
+---
+
+#### **Function 6: `updateGame()`**
+
+**Purpose**: Main game loop (called every frame)
+
+**Logic**:
+1. Check if game is still active: `if (!gameActive) return;`
+2. Call `drawTarget()` to render current frame
+3. Update score display in DOM (if changed)
+4. Check if time has expired: `if (timeLeft <= 0) endGame();`
+
+**Frame Rate**: ~60fps (called every 16ms)
+
+---
+
+#### **Function 7: `handleCanvasClick(event)`**
+
+**Purpose**: Detect clicks and check if they hit the target
+
+**Parameters**: `event` - Mouse click event object
+
+**Logic**:
+1. If game not active, return early
+2. Get click coordinates relative to canvas:
+   - `clickX = event.offsetX` (or calculate from `event.clientX`)
+   - `clickY = event.offsetY`
+3. Calculate distance from click to target center:
+   - `distance = Math.sqrt((clickX - target.x)² + (clickY - target.y)²)`
+4. Check if hit: `if (distance <= target.radius)`
+   - Increment score: `score++`
+   - Update score display
+   - Spawn new target: `spawnTarget()`
+5. Optional: Visual/audio feedback for hit or miss
+
+---
+
+#### **Function 8: `updateTimer()`**
+
+**Purpose**: Decrement timer every second
+
+**Logic**:
+1. Decrease time: `timeLeft--`
+2. Update timer display: `document.getElementById('timer').textContent = timeLeft`
+3. Check if time expired: `if (timeLeft <= 0) endGame();`
+4. Optional: Change timer color when < 10 seconds
+
+---
+
+#### **Function 9: `endGame()`**
+
+**Purpose**: Stop the game and handle game over logic
+
+**Logic**:
+1. Set game state: `gameActive = false`
+2. Clear intervals:
+   - `clearInterval(gameInterval)`
+   - `clearInterval(timerInterval)`
+3. Clear canvas: `ctx.clearRect(0, 0, canvas.width, canvas.height)`
+4. Hide start button, show restart button
+5. Call `submitScore(score)` to send score to backend
+6. Display game over screen:
+   - Show `gameOverScreen` div
+   - Set `finalScore` text to current score
+
+---
+
+#### **Function 10: `submitScore(finalScore)`**
+
+**Purpose**: Send player's score to backend and check for new high score
+
+**Parameters**: `finalScore` - The score to submit
+
+**Logic**:
+1. Create request body: `{ score: finalScore }`
+2. Use Fetch API with POST:
+   ```javascript
+   fetch('/api/score', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({ score: finalScore })
+   })
+   ```
+3. Parse JSON response: `.then(res => res.json())`
+4. Handle response:
+   - If `data.isNewHighScore === true`:
+     - Show "New High Score!" message
+     - Update high score display
+   - Display high score in game over screen
+5. Handle errors with `.catch()`
+
+**Return**: Promise
+
+---
+
+#### **Function 11: `restartGame()`**
+
+**Purpose**: Reset and start a new game
+
+**Logic**:
+1. Hide game over screen
+2. Show start button (or directly call `startGame()`)
+3. Call `startGame()` to begin new round
+
+---
+
+#### **Event Listener Setup**
+
+**Required Listeners**:
+1. Window load: `window.addEventListener('load', initGame)`
+2. Start button: `startBtn.addEventListener('click', startGame)`
+3. Restart button: `restartBtn.addEventListener('click', restartGame)`
+4. Canvas clicks: `canvas.addEventListener('click', handleCanvasClick)`
+
+---
+
+## 6. INTERCONNECTION PLAN
+
+### **Frontend-to-Backend Communication Flow**
+
+#### **Flow 1: Fetch High Score (On Page Load)**
+
+**Trigger**: Page loads, `initGame()` executes
+
+**Sequence**:
+```
+1. Browser loads index.html
+   ↓
+2. game.js executes, calls initGame()
+   ↓
+3. fetchHighScore() makes GET request
+   ↓
+4. Request: GET http://localhost:3000/api/highscore
+   ↓
+5. server.js receives request, calls readScores()
+   ↓
+6. Reads data/scores.json from file system
+   ↓
+7. Returns JSON: { "score": 42, "date": "..." }
+   ↓
+8. game.js receives response
+   ↓
+9. Updates highScore variable and DOM element
+   ↓
+10. Display shows: "High Score: 42"
+```
+
+**Error Handling**:
+- Network error: Display "Error" in high score display
+- Invalid JSON: Log error, default to 0
+
+---
+
+#### **Flow 2: Submit Score (Game End)**
+
+**Trigger**: Timer reaches 0, `endGame()` executes
+
+**Sequence**:
+```
+1. Game timer expires
+   ↓
+2. endGame() calls submitScore(finalScore)
+   ↓
+3. POST request sent to /api/score
+   ↓
+4. Request body: { "score": 25 }
+   ↓
+5. server.js receives POST request
+   ↓
+6. Validates score value
+   ↓
+7. Reads current high score from scores.json
+   ↓
+8. Compares: 25 vs 42 (current high score)
+   ↓
+9. Result: Not a new high score
+   ↓
+10. Returns JSON: { "isNewHighScore": false, "highScore": 42, ... }
+   ↓
+11. game.js receives response
+   ↓
+12. Checks isNewHighScore flag
+   ↓
+13. Updates game over screen accordingly
+   ↓
+14. If new high score: Shows congratulations message
+```
+
+**Alternative Path (New High Score)**:
+```
+7. Compares: 50 vs 42 (current high score)
+   ↓
+8. 50 > 42: New high score!
+   ↓
+9. Creates new score object: { score: 50, date: "2024-02-05T..." }
+   ↓
+10. Writes to scores.json
+   ↓
+11. Returns: { "isNewHighScore": true, "highScore": 50 }
+   ↓
+12. game.js shows "🎉 New High Score! 🎉"
+   ↓
+13. Updates high score display to 50
+```
+
+---
+
+### **Data Format Specifications**
+
+#### **scores.json Format**
+```json
+{
+  "score": 42,
+  "date": "2024-02-05T14:30:00.000Z"
+}
+```
+
+**Fields**:
+- `score`: Integer, the high score value
+- `date`: ISO 8601 timestamp string (when high score was set)
+
+---
+
+#### **API Request/Response Schemas**
+
+**GET /api/highscore**
+
+Request: None (simple GET)
+
+Response (Success - 200):
+```json
+{
+  "score": 42,
+  "date": "2024-02-05T14:30:00.000Z"
+}
+```
+
+Response (Error - 500):
+```json
+{
+  "error": "Failed to read high score"
+}
+```
+
+---
+
+**POST /api/score**
+
+Request (Content-Type: application/json):
+```json
+{
+  "score": 25
+}
+```
+
+Response (Success, New High Score - 200):
+```json
+{
+  "isNewHighScore": true,
+  "highScore": 25,
+  "previousHighScore": 18
+}
+```
+
+Response (Success, Not High Score - 200):
+```json
+{
+  "isNewHighScore": false,
+  "highScore": 42,
+  "submittedScore": 25
+}
+```
+
+Response (Error, Invalid Input - 400):
+```json
+{
+  "error": "Invalid score value"
+}
+```
+
+Response (Error, Server Error - 500):
+```json
+{
+  "error": "Failed to update score"
+}
+```
+
+---
+
+### **Error Handling Strategy**
+
+**Frontend**:
+- Wrap all fetch calls in try-catch or .catch()
+- Display user-friendly error messages
+- Gracefully degrade (game still playable if backend fails)
+- Log errors to console for debugging
+
+**Backend**:
+- Validate all inputs (score must be number >= 0)
+- Use try-catch for file operations
+- Return appropriate HTTP status codes
+- Log server errors
+
+---
+
+## 7. INSTRUCTIONS FOR YOU - STEP-BY-STEP SETUP
+
+### **Complete these actions in exact order:**
+
+---
+
+#### **Step 1: Create Project Directory**
+Open your terminal/command prompt and execute:
+```bash
+mkdir rapidclick
+cd rapidclick
+```
+
+---
+
+#### **Step 2: Initialize npm Project**
+Generate `package.json`:
+```bash
+npm init -y
+```
+
+This creates a default package.json file.
+
+---
+
+#### **Step 3: Install Express.js**
+Install the Express framework:
+```bash
+npm install express
+```
+
+This will:
+- Download Express and dependencies
+- Create `node_modules/` folder
+- Create `package-lock.json`
+
+---
+
+#### **Step 4: Create Folder Structure**
+Create all necessary directories:
+
+**On macOS/Linux**:
+```bash
+mkdir data public public/assets public/assets/sounds public/assets/images
+```
+
+**On Windows (Command Prompt)**:
+```cmd
+mkdir data
+mkdir public
+mkdir public\assets
+mkdir public\assets\sounds
+mkdir public\assets\images
+```
+
+---
+
+#### **Step 5: Create Empty Files**
+
+**On macOS/Linux**:
+```bash
+touch server.js .gitignore
+touch public/index.html public/styles.css public/game.js
+touch data/scores.json
+```
+
+**On Windows (Command Prompt)**:
+```cmd
+type nul > server.js
+type nul > .gitignore
+type nul > public\index.html
+type nul > public\styles.css
+type nul > public\game.js
+type nul > data\scores.json
+```
+
+---
+
+#### **Step 6: Initialize scores.json**
+Open `data/scores.json` in a text editor and add:
+```json
+{
+  "score": 0,
+  "date": null
+}
+```
+Save and close the file.
+
+---
+
+#### **Step 7: Configure .gitignore**
+Open `.gitignore` in a text editor and add:
+```
+node_modules/
+.env
+.DS_Store
+```
+Save and close the file.
+
+---
+
+#### **Step 8: Verify File Structure**
+Run this command to see your directory structure:
+
+**On macOS/Linux**:
+```bash
+tree -L 2
+```
+
+**On Windows or if tree isn't available**:
+```bash
+ls -R
+```
+
+You should see all folders and files from Section 2.
+
+---
+
+#### **Step 9: Optional - Install nodemon (Development Tool)**
+For automatic server restart during development:
+```bash
+npm install --save-dev nodemon
+```
+
+Then add this to `package.json` under `"scripts"`:
+```json
+"scripts": {
+  "start": "node server.js",
+  "dev": "nodemon server.js"
+}
+```
+
+---
+
+#### **Step 10: Request Implementation Code**
+You are now ready to implement the actual code. Request files in this recommended order:
+
+**First**: "Please generate the complete code for `server.js`"  
+**Second**: "Please generate the complete code for `public/index.html`"  
+**Third**: "Please generate the complete code for `public/styles.css`"  
+**Fourth**: "Please generate the complete code for `public/game.js`"
+
+---
+
+#### **Step 11: Test After Each File**
+After implementing each file:
+
+1. **After server.js**: Run `node server.js` and verify server starts
+2. **After index.html**: Open `http://localhost:3000` and check page loads
+3. **After styles.css**: Refresh browser and verify styling appears
+4. **After game.js**: Test the complete game functionality
+
+---
+
+#### **Step 12: Final Testing Checklist**
+Once all files are implemented:
+
+- [ ] Server starts without errors
+- [ ] Page loads at http://localhost:3000
+- [ ] Start button works
+- [ ] Targets spawn randomly
+- [ ] Clicking targets increments score
+- [ ] Timer counts down from 30
+- [ ] Game ends when timer reaches 0
+- [ ] Score submits to backend
+- [ ] High score displays correctly
+- [ ] New high scores are saved
+- [ ] Restart button works
+
+---
+
+### **You Are Now Ready to Begin Implementation**
+
+**Your next message should request the first code file**:
+
+*"Please generate the complete, production-ready code for `server.js` based on the blueprint."*
+
+After receiving and implementing each file, test it, then request the next one.
+
+---
+
+**END OF TECHNICAL BLUEPRINT**
